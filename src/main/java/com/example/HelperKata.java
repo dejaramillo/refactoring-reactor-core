@@ -15,23 +15,29 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.example.BonusType.validateBono;
+
 
 public class HelperKata {
 
     protected static String errorMessage = null;
     protected static String dateValidated = null;
     protected static String bonoEnviado = null;
+    protected static String ANTERIOR_BONO = null;
+    protected static String bonoForObject = null;
     private static final  String EMPTY_STRING = "";
-    private static String ANTERIOR_BONO = null;
-    private static String bonoForObject = null;
     private static Set<String> codes = new HashSet<>();
     private static  AtomicInteger counter = new AtomicInteger(0);
 
     public static Flux<CouponDetailDto> getListFromBase64File(final String fileBase64) {
         String characterSeparated = FileCSVEnum.CHARACTER_DEFAULT.getId();
-        return  createFluxFrom(fileBase64).map(coupon -> Optional.of(generateCoupon(coupon.split(characterSeparated)))
-                                                                       .filter(HelperKata::couponIsEmpty).map(coup -> createEmptyDTO())
-                                                                                                        .orElseGet(() -> createValidatedDTO()));
+        return  createFluxFrom(fileBase64).map(coupon -> optionalManipulation(generateCoupon(coupon.split(characterSeparated))));
+    }
+
+    public static CouponDetailDto optionalManipulation(Coupon cuopon){
+        return Optional.of(cuopon)
+                .filter(HelperKata::couponIsEmpty).map(coup -> createEmptyDTO())
+                .orElseGet(() -> createValidatedDTO());
     }
 
     public static CouponDetailDto createEmptyDTO(){
@@ -75,71 +81,16 @@ public class HelperKata {
         }
     }
 
-    public static String validateBono(){
-
-        if (previousBonusValidate()) {
-            ANTERIOR_BONO = typeBono(bonoEnviado);
-            conditionals();
-        } else if (ANTERIOR_BONO.equals(typeBono(bonoEnviado))) {
-            bonoForObject = bonoEnviado;
-        } else if (!ANTERIOR_BONO.equals(typeBono(bonoEnviado))) {
-            bonoForObject = null;
-        }
-        return bonoForObject;
-    }
-
-    public static String conditionals(){
-        if (ANTERIOR_BONO == "") {
-            bonoForObject = null;
-        } else {
-            bonoForObject = bonoEnviado;
-        }
-        return bonoForObject;
-    }
-
-    public static Boolean previousBonusValidate(){
-        return ANTERIOR_BONO == null || ANTERIOR_BONO.equals("");
-    }
-
-
     public static Coupon generateCoupon(String[] details){
         var flux = Flux.just(details);
         Coupon coupon = new Coupon(flux.blockFirst(),flux.blockLast());
         return coupon;
     }
 
-
-    public static String typeBono(String bonoIn) {
-        if (validateBousType(bonoIn)) {
-            return ValidateCouponEnum.EAN_13.getTypeOfEnum();
-        }
-        if (validateBonusTypeEan39(bonoIn)) {
-            return ValidateCouponEnum.EAN_39.getTypeOfEnum();
-
-        }
-        else {
-            return ValidateCouponEnum.ALPHANUMERIC.getTypeOfEnum();
-        }
-    }
-
-    public static Boolean validateBousType(String bonoIn){
-        return bonoIn.chars().allMatch(Character::isDigit)
-                && bonoIn.length() >= 12
-                && bonoIn.length() <= 13;
-    }
-
-    public static Boolean validateBonusTypeEan39(String bonoIn){
-        return bonoIn.startsWith("*")
-                && bonoIn.replace("*", "").length() >= 1
-                && bonoIn.replace("*", "").length() <= 43;
-    }
-
-
     private static byte[] decodeBase64(final String fileBase64) {
         return Base64.getDecoder().decode(fileBase64);
 
     }
-
 
     public static boolean validateDateRegex(String dateForValidate) {
         String regex = FileCSVEnum.PATTERN_DATE_DEFAULT.getId();
